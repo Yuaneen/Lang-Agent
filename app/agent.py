@@ -11,6 +11,7 @@ from langchain_community.chat_models.tongyi import ChatTongyi
 from langchain_core.messages import AIMessage, AIMessageChunk, HumanMessage, SystemMessage
 from tools.search import search
 from tools.baseTool import multiply, get_current_time, get_weather_for_location
+from tools.web_search import web_search
 from langgraph.checkpoint.memory import InMemorySaver
 from app.memory_store import list_user_memory
 from tools.memory_tools import remember_user_fact, recall_user_facts
@@ -35,12 +36,14 @@ def get_agent_graph():
         multiply,
         get_current_time,
         search,
+        web_search,
         get_weather_for_location,
         remember_user_fact,
         recall_user_facts,
     ]
     system_prompt = (
         "你是一个乐于助人的助手，回答简洁清晰。"
+        "当问题涉及最新消息、近期动态、新闻时，优先调用 web_search 获取实时信息并附上来源。"
         "当用户表达稳定偏好/习惯/个人事实（如喜欢什么、常住地、作息）时，"
         "调用 remember_user_fact 保存长期记忆；回答相关问题前可调用 recall_user_facts 检索。"
     )
@@ -121,10 +124,14 @@ def _log_tool_calls(messages: list[object]) -> None:
 
 def run_agent(user_text: str) -> str:
     """对用户输入运行 ReAct 智能体，返回最后一条助手回复文本。"""
-    graph = get_agent_graph()
-    # todo 会话id
     thread_id = os.getenv("AGENT_THREAD_ID", "cli-default")
     user_id = os.getenv("AGENT_USER_ID", "demo-user")
+    return run_agent_for_user(user_text=user_text, user_id=user_id, thread_id=thread_id)
+
+
+def run_agent_for_user(user_text: str, user_id: str, thread_id: str) -> str:
+    """按指定 user/thread 上下文运行智能体，适配 API 与 CLI 复用。"""
+    graph = get_agent_graph()
     memory_rows = list_user_memory(user_id, limit=8)
     memory_context = ("\n".join([f"- {row['key']}: {row['value']}" for row in memory_rows])
         if memory_rows
