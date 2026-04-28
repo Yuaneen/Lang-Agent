@@ -17,3 +17,7 @@ def get_current_time() -> str:
 def get_weather_for_location(city: str) -> str:
     """获取指定城市的天气。"""
     return f"{city}总是阳光明媚！"
+
+def search_web(query: str) -> str:
+    """在线搜索网络信息 用于回答用户的问题"""
+    return "调用网络搜索功能"
